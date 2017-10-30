@@ -1,5 +1,8 @@
 OS := $(shell uname)
 
+clean: 
+	cd silk && make clean
+
 build: */*.go
 	go build
 
