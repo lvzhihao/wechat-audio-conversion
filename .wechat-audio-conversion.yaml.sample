@@ -1,1 +1,12 @@
+# server
 api_host: 127.0.0.1:8299
+tempdir_prefix: wxaudio
+
+# format
+default_decoder_format: mp3
+
+# qiniu config
+qiniu_access_key: your qiniu config
+qiniu_secret_key: your qiniu config
+qiniu_zhiyakf_bucket: you bucket name
+qiniu_zhiyakf_domain: you bucket domain

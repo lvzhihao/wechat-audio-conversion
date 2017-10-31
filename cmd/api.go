@@ -22,11 +22,13 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo"
@@ -39,16 +41,25 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	SilkHeaderFlag   string = "#!SILK_V3"
+	SilkDeockerCmd   string = "sbin/decoder"
+	FfmpegCmd        string = "sbin/ffmpeg"
+	NoSourceError    error  = errors.New("no source param")
+	SourceFetchError error  = errors.New("source fetch error")
+)
+
 // apiCmd represents the api command
 var apiCmd = &cobra.Command{
 	Use:   "api",
 	Short: "api server",
 	Long:  `wxaudio api server`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// echo framework app
 		app := goutils.NewEcho()
 
-		var logger *zap.Logger
 		// app logger level
+		var logger *zap.Logger
 		if os.Getenv("DEBUG") == "true" {
 			logger, _ = zap.NewDevelopment()
 			app.Logger.SetLevel(log.DEBUG)
@@ -63,6 +74,7 @@ var apiCmd = &cobra.Command{
 			logger, _ = zap.NewProduction()
 		}
 
+		// store instance
 		store := wxaudio.NewStorage()
 		store.Set(wxaudio.NewQiniuInstance(
 			viper.GetString("qiniu_access_key"),
@@ -83,23 +95,28 @@ var apiCmd = &cobra.Command{
 			logger.Fatal("New Storage Error", zap.Error(err))
 		}
 
-		tempdir, err := ioutil.TempDir("/tmp", viper.GetString("tempdir"))
+		// tmp dir
+		tempdir, err := ioutil.TempDir("", viper.GetString("tempdir_prefix"))
 		if err != nil {
 			logger.Fatal("tempdir init error", zap.Error(err))
 		}
 		defer os.RemoveAll(tempdir) // clean up
 		logger.Info("tempdir init success", zap.String("tempdir", tempdir))
 
+		// default decoder format
+		defaultDecoderFormatSuffix := "." + strings.ToLower(viper.GetString("default_decoder_format"))
+
+		// api list
 		app.GET("/api/decoder", func(ctx echo.Context) error {
 			source := ctx.QueryParam("source")
 			if source == "" {
-				return ctx.String(http.StatusBadRequest, "no source param")
+				return ctx.JSON(http.StatusBadRequest, UploadError(NoSourceError))
 			}
 			rsp, err := http.Get(source)
 			logger.Debug("request source", zap.Any("response_status", rsp.Status), zap.Error(err))
 			if rsp.StatusCode != http.StatusOK {
 				ctx.Logger().Error(err)
-				return ctx.String(http.StatusBadRequest, "source unavailable")
+				return ctx.JSON(http.StatusBadRequest, UploadError(SourceFetchError))
 			}
 			b, err := ioutil.ReadAll(rsp.Body)
 			if err != nil {
@@ -112,30 +129,30 @@ var apiCmd = &cobra.Command{
 				return ctx.JSON(http.StatusInternalServerError, UploadError(err))
 			}
 			defer os.Remove(sourceFp.Name())
-			start := bytes.Index(b, []byte("#!SILK_V3"))
+			start := bytes.Index(b, []byte(SilkHeaderFlag))
 			_, err = sourceFp.Write(b[start:]) //小U给的链接要舍弃第一个字节
 			if err != nil {
 				ctx.Logger().Error(err)
 				return ctx.JSON(http.StatusInternalServerError, UploadError(err))
 			}
-			cmd := exec.Command("sbin/decoder", sourceFp.Name(), sourceFp.Name()+".pcm")
+			cmd := exec.Command(SilkDeockerCmd, sourceFp.Name(), sourceFp.Name()+".pcm")
 			err = cmd.Run()
 			if err != nil {
 				ctx.Logger().Error(err)
 				return ctx.JSON(http.StatusInternalServerError, UploadError(err))
 			}
 			defer os.Remove(sourceFp.Name() + ".pcm")
-			cmd = exec.Command("sbin/ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", sourceFp.Name()+".pcm", sourceFp.Name()+".mp3")
+			cmd = exec.Command(FfmpegCmd, "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", sourceFp.Name()+".pcm", sourceFp.Name()+defaultDecoderFormatSuffix)
 			err = cmd.Run()
 			if err != nil {
 				ctx.Logger().Error(err)
 				return ctx.JSON(http.StatusInternalServerError, UploadError(err))
 			}
-			defer os.Remove(sourceFp.Name() + ".mp3")
+			defer os.Remove(sourceFp.Name() + defaultDecoderFormatSuffix)
 			params := make(map[string]string, 0)
 			params["x:source"] = source
-			rb, _ := ioutil.ReadFile(sourceFp.Name() + ".mp3")
-			ret, err := store.Upload(getUploadFilename(goutils.RandStr(20)+".mp3"), rb, params)
+			rb, _ := ioutil.ReadFile(sourceFp.Name() + defaultDecoderFormatSuffix)
+			ret, err := store.Upload(getUploadFilename(goutils.RandStr(20)+defaultDecoderFormatSuffix), rb, params)
 			if err != nil {
 				ctx.Logger().Error(err)
 				return ctx.JSON(http.StatusInternalServerError, UploadError(err))
@@ -153,14 +170,14 @@ var apiCmd = &cobra.Command{
 
 type ApiUploadReturn struct {
 	Status string        `json:"status"`
-	Error  error         `json:"msg"`
+	Error  string        `json:"msg"`
 	Data   []interface{} `json:"data"`
 }
 
 func UploadError(err error) *ApiUploadReturn {
 	return &ApiUploadReturn{
 		Status: "error",
-		Error:  err,
+		Error:  err.Error(),
 	}
 }
 
