@@ -125,7 +125,7 @@ var apiCmd = &cobra.Command{
 				return ctx.JSON(http.StatusInternalServerError, UploadError(err))
 			}
 			defer os.Remove(sourceFp.Name() + ".pcm")
-			cmd = exec.Command("/usr/bin/ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", sourceFp.Name()+".pcm", sourceFp.Name()+".mp3")
+			cmd = exec.Command("sbin/ffmpeg", "-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", sourceFp.Name()+".pcm", sourceFp.Name()+".mp3")
 			err = cmd.Run()
 			if err != nil {
 				ctx.Logger().Error(err)

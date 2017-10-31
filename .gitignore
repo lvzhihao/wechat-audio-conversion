@@ -19,7 +19,7 @@ wechat-audio-conversion
 *.swp
 *.swa
 
-silk
+environment/silk
 sbin
 
 .wechat-audio-conversion.yaml
