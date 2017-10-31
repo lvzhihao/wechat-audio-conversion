@@ -1,9 +1,0 @@
-# server
-api_host: :8299
-tempdir_prefix: wxaudio
-
-# qiniu config
-qiniu_access_key: Utrebjyb9UZDv4DrEz2nBHfDAP1poKaGRdPuQY5y
-qiniu_secret_key: CXttxdSfLgXclD_N0DKTHfBOK2miLfMRn5oDFkOr
-qiniu_zhiyakf_bucket: zhiyakf
-qiniu_zhiyakf_domain: zhiyakf.wdwdcdn.com
