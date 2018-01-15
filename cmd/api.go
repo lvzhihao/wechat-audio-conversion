@@ -43,8 +43,8 @@ import (
 
 var (
 	SilkHeaderFlag   string = "#!SILK_V3"
-	SilkDeockerCmd   string = "sbin/decoder"
-	FfmpegCmd        string = "sbin/ffmpeg"
+	SilkDeockerCmd   string = "bin/decoder"
+	FfmpegCmd        string = "bin/ffmpeg"
 	NoSourceError    error  = errors.New("no source param")
 	SourceFetchError error  = errors.New("source fetch error")
 )

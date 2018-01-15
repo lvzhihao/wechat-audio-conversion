@@ -1,25 +1,25 @@
 OS := $(shell uname)
 
-all: sbindir ffmpeg silk-decoder build
+all: bindir ffmpeg silk-decoder build
 	go test -v
 
-sbindir:
-	if [ ! -d "sbin" ]; then mkdir sbin; fi;
+bindir:
+	if [ ! -d "bin" ]; then mkdir bin; fi;
 
 # for ubuntu only~~~ producer use docker image
-ffmpeg: sbindir
-	if [ ! -f "sbin/ffmpeg" ]; then \
-	sudo apt-get install ffmpeg -y && ln -s /usr/bin/ffmpeg sbin/ffmpeg; \
+ffmpeg: bindir
+	if [ ! -f "bin/ffmpeg" ]; then \
+	sudo apt-get install ffmpeg -y && ln -s /usr/bin/ffmpeg bin/ffmpeg; \
 	fi;
 
-silk-decoder: sbindir
-	if [ ! -f "sbin/decoder" ]; then \
-	cd environment/silk && make && cd ../../ && cp environment/silk/decoder sbin && chmod a+x sbin/decoder; \
+silk-decoder: bindir
+	if [ ! -f "bin/decoder" ]; then \
+	cd environment/silk && make && cd ../../ && cp environment/silk/decoder bin && chmod a+x bin/decoder; \
 	fi;
 
 clean: 
 	cd environment/silk && make clean
-	rm -rf sbin
+	rm -rf bin
 	rm -f wechat-audio-conversion
 
 build: */*.go
@@ -28,7 +28,7 @@ build: */*.go
 server: all
 	./wechat-audio-conversion api
 
-dev: sbindir ffmpeg silk-decoder
+dev: bindir ffmpeg silk-decoder
 	DEBUG=true go run main.go api
 
 env-build:
@@ -44,7 +44,9 @@ docker-push:
 	sudo docker push edwinlll/wechat-audio-conversion:latest
 
 docker-ccr:
-	sudo docker tag edwinlll/wechat-audio-conversion-environment:latest ccr.ccs.tencentyun.com/wdwd/wechat-audio-conversion-environment
-	sudo docker push ccr.ccs.tencentyun.com/wdwd/wechat-audio-conversion-environment
 	sudo docker tag edwinlll/wechat-audio-conversion:latest ccr.ccs.tencentyun.com/wdwd/wechat-audio-conversion
 	sudo docker push ccr.ccs.tencentyun.com/wdwd/wechat-audio-conversion
+
+docker-uhub:
+	sudo docker tag edwinlll/wechat-audio-conversion:latest uhub.service.ucloud.cn/mmzs/wechat-audio-conversion
+	sudo docker push uhub.service.ucloud.cn/mmzs/wechat-audio-conversion
