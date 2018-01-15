@@ -10,5 +10,5 @@ COPY --from=builder /go/src/github.com/lvzhihao/wechat-audio-conversion/wechat-a
 # ext support
 RUN mkdir bin && \
     ln -s /usr/bin/ffmpeg bin/ffmpeg && \
-    ln -s /usr/local/sbin/silk-decoder bin/decoder
+    ln -s /usr/local/bin/silk-decoder bin/decoder
 CMD ["wechat-audio-conversion", "api"]
