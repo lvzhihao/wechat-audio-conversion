@@ -7,11 +7,11 @@ services:
       - TZ=Asia/Shanghai
       - DEBUG=false
     volumes:
-      - ./.wechat-audio-conversion.yaml:/go/src/github.com/lvzhihao/wechat-audio-conversion/.wechat-audio-conversion.yaml
+      - ./.wechat-audio-conversion.yaml:/usr/local/wechat-audio-conversion/.wechat-audio-conversion.yaml
     command: >
       sh -c "ln -snf /usr/share/zoneinfo/$${TZ} /etc/localtime && 
       echo $${TZ} > /etc/timezone &&
-      go-wrapper run api"
+      cd /usr/local/wechat-audio-conversion && ./wechat-audio-conversion api"
     expose:
       - 8299
     ports:
