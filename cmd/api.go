@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -63,36 +64,34 @@ var apiCmd = &cobra.Command{
 		if os.Getenv("DEBUG") == "true" {
 			logger, _ = zap.NewDevelopment()
 			app.Logger.SetLevel(log.DEBUG)
-			app.Renderer = goutils.NewEchoRenderer("demo", "demo/views/*.html")
-			app.GET("/demo", func(ctx echo.Context) error {
-				return ctx.Render(http.StatusOK, "upload.html", map[string]string{
-					"host":      viper.GetString("api_host"),
-					"demo_code": viper.GetString("demo_code"),
-				})
-			})
 		} else {
 			logger, _ = zap.NewProduction()
 		}
 
-		// store instance
 		store := wxaudio.NewStorage()
-		store.Set(wxaudio.NewQiniuInstance(
-			viper.GetString("qiniu_access_key"),
-			viper.GetString("qiniu_secret_key"),
-			viper.GetString("qiniu_zhiyakf_bucket"),
-			viper.GetString("qiniu_zhiyakf_domain"),
-			&storage.Config{
-				// 空间对应的机房
-				Zone: &storage.ZoneHuadong,
-				// 是否使用https域名
-				UseHTTPS: true,
-				// 上传是否使用CDN上传加速
-				UseCdnDomains: false,
-			},
-		))
-		err := store.Link()
-		if err != nil {
-			logger.Fatal("New Storage Error", zap.Error(err))
+		switch viper.GetString("storage_system") {
+		case "qiniu":
+			// store instance
+			store.Set(wxaudio.NewQiniuInstance(
+				viper.GetString("qiniu_access_key"),
+				viper.GetString("qiniu_secret_key"),
+				viper.GetString("qiniu_zhiyakf_bucket"),
+				viper.GetString("qiniu_zhiyakf_domain"),
+				&storage.Config{
+					// 空间对应的机房
+					Zone: &storage.ZoneHuadong,
+					// 是否使用https域名
+					UseHTTPS: true,
+					// 上传是否使用CDN上传加速
+					UseCdnDomains: false,
+				},
+			))
+			err := store.Link()
+			if err != nil {
+				logger.Fatal("Storage Error", zap.Error(err))
+			}
+		default:
+			store = nil //无存储
 		}
 
 		// tmp dir
@@ -149,19 +148,28 @@ var apiCmd = &cobra.Command{
 				return ctx.JSON(http.StatusInternalServerError, UploadError(err))
 			}
 			defer os.Remove(sourceFp.Name() + defaultDecoderFormatSuffix)
-			params := make(map[string]string, 0)
-			params["x:source"] = source
 			rb, _ := ioutil.ReadFile(sourceFp.Name() + defaultDecoderFormatSuffix)
-			ret, err := store.Upload(getUploadFilename(goutils.RandStr(20)+defaultDecoderFormatSuffix), rb, params)
-			if err != nil {
-				ctx.Logger().Error(err)
-				return ctx.JSON(http.StatusInternalServerError, UploadError(err))
+			if store == nil {
+				return ctx.JSON(http.StatusOK, ApiUploadReturn{
+					Status: "success",
+					Data: []interface{}{
+						base64.StdEncoding.EncodeToString(rb),
+					},
+				})
+			} else {
+				ret, err := store.Upload(getUploadFilename(goutils.RandStr(20)+defaultDecoderFormatSuffix), rb, map[string]string{
+					"x:source": source,
+				})
+				if err != nil {
+					ctx.Logger().Error(err)
+					return ctx.JSON(http.StatusInternalServerError, UploadError(err))
+				}
+				logger.Debug("upload result", zap.Any("result", ret), zap.Error(err))
+				return ctx.JSON(http.StatusOK, ApiUploadReturn{
+					Status: "success",
+					Data:   []interface{}{ret},
+				})
 			}
-			logger.Debug("upload result", zap.Any("result", ret), zap.Error(err))
-			return ctx.JSON(http.StatusOK, ApiUploadReturn{
-				Status: "success",
-				Data:   []interface{}{ret},
-			})
 		})
 
 		goutils.EchoStartWithGracefulShutdown(app, viper.GetString("api_host"))
