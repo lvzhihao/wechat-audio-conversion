@@ -44,9 +44,11 @@ docker-push:
 	sudo docker push edwinlll/wechat-audio-conversion:latest
 
 docker-ccr:
-	sudo docker tag edwinlll/wechat-audio-conversion:latest ccr.ccs.tencentyun.com/wdwd/wechat-audio-conversion
-	sudo docker push ccr.ccs.tencentyun.com/wdwd/wechat-audio-conversion
+	sudo docker tag edwinlll/wechat-audio-conversion:latest ccr.ccs.tencentyun.com/wdwd/wechat-audio-conversion:latest
+	sudo docker push ccr.ccs.tencentyun.com/wdwd/wechat-audio-conversion:latest
+	sudo docker rmi ccr.ccs.tencentyun.com/wdwd/wechat-audio-conversion:latest
 
 docker-uhub:
-	sudo docker tag edwinlll/wechat-audio-conversion:latest uhub.service.ucloud.cn/mmzs/wechat-audio-conversion
-	sudo docker push uhub.service.ucloud.cn/mmzs/wechat-audio-conversion
+	sudo docker tag edwinlll/wechat-audio-conversion:latest uhub.service.ucloud.cn/mmzs/wechat-audio-conversion:latest
+	sudo docker push uhub.service.ucloud.cn/mmzs/wechat-audio-conversion:latest
+	sudo docker rmi uhub.service.ucloud.cn/mmzs/wechat-audio-conversion:latest
