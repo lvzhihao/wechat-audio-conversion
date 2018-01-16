@@ -11,7 +11,7 @@ services:
     command: >
       sh -c "ln -snf /usr/share/zoneinfo/$${TZ} /etc/localtime && 
       echo $${TZ} > /etc/timezone &&
-      cd /usr/local/wechat-audio-conversion && ./wechat-audio-conversion api"
+      wechat-audio-conversion api"
     expose:
       - 8299
     ports:
